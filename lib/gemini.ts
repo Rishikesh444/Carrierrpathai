@@ -1,14 +1,23 @@
 const GEMINI_MODELS = [
-  "gemini-2.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
   "gemini-flash-latest",
-  "gemini-2.5-pro",
+  "gemini-3.7-flash",
+  "gemini-2.5-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemini-3-flash-preview",
 ]
+
+
 
 export async function generateGeminiAI(prompt: string, systemInstruction?: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey || apiKey.includes("YOUR_")) {
     throw new Error("No Gemini API key configured")
   }
+
+  let lastError: any = null
 
   for (const model of GEMINI_MODELS) {
     try {
@@ -31,15 +40,23 @@ export async function generateGeminiAI(prompt: string, systemInstruction?: strin
         body: JSON.stringify(body),
       })
 
+      if (!res.ok) {
+        const errText = await res.text()
+        console.warn(`Gemini model ${model} HTTP ${res.status}:`, errText)
+        continue
+      }
+
       const data = await res.json()
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text
       if (text && text.trim()) {
         return text.trim()
       }
     } catch (err) {
+      lastError = err
       console.warn(`Model ${model} failed, trying next:`, err)
     }
   }
 
-  throw new Error("All Gemini models failed")
+  throw lastError || new Error("All Gemini models failed")
 }
+
